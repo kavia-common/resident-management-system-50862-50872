@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import "./App.css";
 
 /**
@@ -7,6 +7,27 @@ import "./App.css";
  */
 function nextId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+/**
+ * Applies the provided theme to the DOM root in the two supported ways:
+ * - toggling `.theme-dark` on <html>
+ * - setting `document.documentElement.dataset.theme`
+ *
+ * Kept outside the component to avoid re-creating the function per render.
+ */
+function applyThemeToDom(theme) {
+  const isDark = theme === "dark";
+  const root = document.documentElement;
+
+  root.classList.toggle("theme-dark", isDark);
+
+  if (isDark) {
+    root.dataset.theme = "dark";
+  } else {
+    // Remove attribute when not dark so default/light CSS applies cleanly.
+    delete root.dataset.theme;
+  }
 }
 
 // PUBLIC_INTERFACE
@@ -24,7 +45,7 @@ function App() {
 
   /**
    * Current theme state ("light" | "dark").
-   * Note: root element class/data-attribute wiring is planned for the next step.
+   * Loads from localStorage on initialization (defaulting to "light").
    */
   const [theme, setTheme] = useState(() => {
     try {
@@ -34,6 +55,27 @@ function App() {
       return "light";
     }
   });
+
+  /**
+   * Keep the DOM root in sync with theme state.
+   * This ensures the correct theme styles are applied on load and after toggles.
+   */
+  useEffect(() => {
+    applyThemeToDom(theme);
+  }, [theme]);
+
+  /**
+   * Persist theme changes back to localStorage.
+   * Done in an effect (instead of inside the click handler) so all theme updates
+   * remain consistent, even if theme is set from elsewhere in the future.
+   */
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("theme", theme);
+    } catch {
+      // Ignore storage failures (e.g., private mode / disabled storage)
+    }
+  }, [theme]);
 
   const canSubmit = useMemo(() => {
     return name.trim().length > 0 && apartment.trim().length > 0;
@@ -63,23 +105,13 @@ function App() {
 
   // PUBLIC_INTERFACE
   const handleToggleTheme = () => {
-    setTheme((prev) => {
-      const next = prev === "dark" ? "light" : "dark";
-      try {
-        window.localStorage.setItem("theme", next);
-      } catch {
-        // Ignore storage failures (e.g., private mode / disabled storage)
-      }
-      // NOTE: In the next step, we'll also apply next theme to the root element
-      // (e.g., document.documentElement.dataset.theme = next or add .theme-dark).
-      return next;
-    });
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
   };
 
   const isDark = theme === "dark";
 
   return (
-    <div className="App">
+    <div className={`App${isDark ? " theme-dark" : ""}`}>
       <header className="TopBar">
         <div className="TopBar-inner">
           <div className="Brand">
