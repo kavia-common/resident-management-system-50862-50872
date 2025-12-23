@@ -22,6 +22,19 @@ function App() {
   const [name, setName] = useState("");
   const [apartment, setApartment] = useState("");
 
+  /**
+   * Current theme state ("light" | "dark").
+   * Note: root element class/data-attribute wiring is planned for the next step.
+   */
+  const [theme, setTheme] = useState(() => {
+    try {
+      const stored = window.localStorage.getItem("theme");
+      return stored === "dark" ? "dark" : "light";
+    } catch {
+      return "light";
+    }
+  });
+
   const canSubmit = useMemo(() => {
     return name.trim().length > 0 && apartment.trim().length > 0;
   }, [name, apartment]);
@@ -48,6 +61,23 @@ function App() {
     setResidents((prev) => prev.filter((r) => r.id !== id));
   };
 
+  // PUBLIC_INTERFACE
+  const handleToggleTheme = () => {
+    setTheme((prev) => {
+      const next = prev === "dark" ? "light" : "dark";
+      try {
+        window.localStorage.setItem("theme", next);
+      } catch {
+        // Ignore storage failures (e.g., private mode / disabled storage)
+      }
+      // NOTE: In the next step, we'll also apply next theme to the root element
+      // (e.g., document.documentElement.dataset.theme = next or add .theme-dark).
+      return next;
+    });
+  };
+
+  const isDark = theme === "dark";
+
   return (
     <div className="App">
       <header className="TopBar">
@@ -61,6 +91,18 @@ function App() {
           </div>
 
           <div className="TopBar-actions">
+            <button
+              type="button"
+              className="Pill"
+              onClick={handleToggleTheme}
+              aria-pressed={isDark}
+              aria-label={`Switch to ${isDark ? "light" : "dark"} theme`}
+              title={`Switch to ${isDark ? "light" : "dark"} theme`}
+            >
+              <span aria-hidden="true">{isDark ? "🌙" : "☀️"}</span>
+              <span>{isDark ? "Dark" : "Light"}</span>
+            </button>
+
             <span className="Pill" aria-label="Resident count">
               {residents.length} resident{residents.length === 1 ? "" : "s"}
             </span>
